@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Apis.Auth" Version="1.58.0" />
+    <PackageReference Include="identityserver4" Version="4.1.2" />
     <PackageReference Include="microsoft.aspnetcore.authentication" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="5.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.2.0" />
