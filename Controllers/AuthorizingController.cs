@@ -2,10 +2,12 @@
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Util.Store;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,10 +18,10 @@ namespace WebApplication1.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    //[Route("/Authorizing")]
+    [Authorize]
     public class AuthorizingController : AbstractController<TokenResponse>
     {
-        private GoogleAuthorizationSetting _googleSetting;
+        private GoogleClientSetting _googleSetting;
         private IDataProtectionProvider _protectionProvider;
         private readonly IWebHostEnvironment _hostingEnvironment;
 
@@ -128,11 +130,18 @@ namespace WebApplication1.Controllers
         }
         #endregion
 
+        /// <summary>
+        /// WARNING: testing
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
-        public void GoogleLogin()
+        [Route("/login-oidc")]
+        public ActionResult Login()
         {
-            var protector = _protectionProvider.CreateProtector("Oauth");
+            //var protector = _protectionProvider.CreateProtector("Oauth");
             //var code = new Authcode();
+
+            return new JsonResult(from c in User.Claims select new { c.Type, c.Value });
         }
 
         /// <summary>

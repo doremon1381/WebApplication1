@@ -10,6 +10,9 @@ namespace WebApplication1.Controllers
 {
     [ApiController]
     [Route("[Controller]")]
+    /// <summary>
+    /// TODO: will be removed, using authorizationController instead.
+    /// </summary>
     public class AccountController : AbstractController<Account>
     {
         public AccountController(IAccountServices services) : base(services)
