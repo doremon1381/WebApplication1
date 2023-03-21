@@ -17,10 +17,23 @@ namespace WebApplication1.Services
     {
         internal readonly IMongoCollection<T> _collection;
 
-        public AbstractServices(IFinalProjectDatabaseSetting dbSetting, IMongoClient client)
+        public AbstractServices(IMongoDatabase mongoDb)
         {
-            var db = client.GetDatabase(dbSetting.DatabaseName);
-            _collection = db.GetCollection<T>(typeof(T).Name);
+            _collection = mongoDb.GetCollection<T>(typeof(T).Name);
+        }
+    }
+
+    public abstract class AbstractServices<T, T1, T2>
+    {
+        internal readonly IMongoCollection<T> _collection;
+        internal readonly IMongoCollection<T1> _collection1;
+        internal readonly IMongoCollection<T2> _collection2;
+
+        public AbstractServices(IMongoDatabase mongoDb)
+        {
+            _collection = mongoDb.GetCollection<T>(typeof(T).Name);
+            _collection1 = mongoDb.GetCollection<T1>(typeof(T1).Name);
+            _collection2 = mongoDb.GetCollection<T2>(typeof(T2).Name);
         }
     }
 }

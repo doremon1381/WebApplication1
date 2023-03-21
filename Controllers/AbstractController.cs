@@ -25,4 +25,16 @@ namespace WebApplication1.Controllers
 
         }
     }
+
+    public abstract class AbstractController<T, T1> : ControllerBase
+    {
+        internal readonly IServices<T> _services;
+        internal readonly IServices<T1> _services1;
+
+        protected AbstractController(IServices<T> services, IServices<T1> services1)
+        {
+            _services = services;
+            _services1 = services1;
+        }
+    }
 }

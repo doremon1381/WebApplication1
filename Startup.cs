@@ -8,9 +8,17 @@ using MongoDB.Driver;
 using System.IO;
 using WebApplication1.Services;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using IdentityServer4;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using WebApplication1.Models;
+using Microsoft.AspNetCore.Identity;
+using System;
+using AspNetCore.Identity.Mongo;
+using AspNetCore.Identity.Mongo.Model;
+using System.Security.Cryptography.X509Certificates;
+using Serilog;
+using Serilog.Events;
+using WebApplication1.Common;
 
 namespace WebApplication1
 {
@@ -44,23 +52,49 @@ namespace WebApplication1
             services.AddSingleton<OpenIDConnectionClient>(sp =>
                 sp.GetRequiredService<IOptions<OpenIDConnectionClient>>().Value);
 
+            AppSettingExtensions.GetFromAppSettings(config);
             // database
-            services.AddSingleton<IMongoClient>(s =>
-                new MongoClient(config.GetValue<string>(AppSettingExtensions.DatabaseConnectionAddress)));
+            var mongoDb = new MongoClient(AppSettingExtensions.ConnectionString)
+                                    .GetDatabase(AppSettingExtensions.DatabaseName);
+            // TODO: will do sth
+            services.AddScoped<IMongoDatabase>(sp => mongoDb);
+
+            // TODO: will do sth
+            //     :https://stackoverflow.com/questions/67255591/using-asp-net-core-identity-with-mongodb
+            services.AddIdentityMongoDbProvider<Account, MongoRole>(identity =>
+            {
+                // TODO: will do sth
+                identity.Password.RequiredLength = 8;
+                // other options
+            },
+            mongo =>
+            {
+                mongo.ConnectionString = AppSettingExtensions.ConnectionString;
+            })
+            .AddDefaultTokenProviders()
+            .AddClaimsPrincipalFactory<ManuallyCreateClaimsPrincipal>();
             #endregion acceptable
 
             #region modifying
-            // REMARKABLE: can not use cause the sequence of execution of code which this function
+            // REMARK: can not use cause the sequence of execution of programaticaly atoms (blocks of code) which this function
             //           : .AddInMemoryApiResources()
             //           : inside, from running it to operation of Identityserver
             //           : somehow just dont do what I want
             //           : still dont know difference between "AddInMemoryApiScopes" and "AddInMemoryApiResources" in how it work?
             services.AddIdentityServer()
-                    .AddInMemoryApiScopes(Config.GetApiScopes)
+                    //// TODO: comment for test
+                    //.AddInMemoryApiScopes(Config.ApiScopes)
                     .AddInMemoryIdentityResources(Config.IdentityResources)
-                    //.AddInMemoryApiResources(Config.GetApiResources()) - OLD :v
+                    .AddInMemoryApiResources(Config.ApiResources)
+                    //- it's replaced with ApiScopes, but when using this function, I just don't know :v
                     .AddInMemoryClients(Config.GetClients())
-                    .AddDeveloperSigningCredential(); // TODO: for test, will add Identity Credential later (still dont know how to add an "Identity credential"), getting from database or sth else?
+                    //// TODO: comment for test
+                    //.AddAspNetIdentity<Account>()
+                    .AddProfileService<ManuallyCreateProfileServices>()
+                    .AddResourceOwnerValidator<ResourceOwnerPasswordValidator>()
+                    //.AddSigningCredential(new X509Certificate2(Path.Combine(".", "certs", "webApplication1.pfx"), AppSettingExtensions.SignInCredentialCryptoServicesPassword))
+                    .AddDeveloperSigningCredential();
+            //.AddDeveloperSigningCredential(); // TODO: for test, will add Identity Credential later (still dont know how to add an "Identity credential"), getting from database or sth else?
 
             // authorization services
             services.AddAuthentication(options =>
@@ -76,29 +110,36 @@ namespace WebApplication1
 
                 // follow: https://stackoverflow.com/questions/59638965/how-to-add-openidconnect-via-identityserver4-to-asp-net-core-serverside-blazor-w
                 options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultSignInScheme =CookieAuthenticationDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme =OpenIdConnectDefaults.AuthenticationScheme;
+                // TODO: comment for now
+                //options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
                 //}).AddCookie("Cookies") // TODO: the "Cookies" as parameter inside "AddCookie" funcion is "authenticationScheme"
-            }).AddCookie()
+            })
+            // TODO: will check again
+            //.AddCookie(cookieAuthenticationOptions => 
+            //{
+            //    cookieAuthenticationOptions.Events.OnValidatePrincipal = (cookie) => SecurityStampValidator.ValidatePrincipalAsync(cookie);
+            //})
+            .AddCookie()
             .AddOpenIdConnect("oidc", options =>
             {
                 // TODO: using "options.RequireHttpsMetadata = false" for debug, 
                 //     : will learn to use https://github.com/aspnet/Security/blob/release/2.1/src/Microsoft.AspNetCore.Authentication.JwtBearer/JwtBearerOptions.cs#L23
                 options.RequireHttpsMetadata = false;
 
-                options.Authority = config.GetValue<string>(AppSettingExtensions.OpenIDConnectConfigAddress(OpenIDConnectionConfig.AUTHORITY));
-                options.ClientId = config.GetValue<string>(AppSettingExtensions.OpenIDConnectConfigAddress(OpenIDConnectionConfig.CLIENTID));
-                options.ClientSecret = config.GetValue<string>(AppSettingExtensions.OpenIDConnectConfigAddress(OpenIDConnectionConfig.CLIENTSECRET));
-                //options.ResponseType = config.GetValue<string>(AppSettingExtensions.OpenIDConnectString(OpenIDConnectionConfig.RESPONSETYPE));
-                options.ResponseType = OpenIdConnectResponseType.Code;
+                options.Authority = AppSettingExtensions.Authority;
+                options.ClientId = AppSettingExtensions.ClientId;
+                options.ClientSecret = AppSettingExtensions.ClientSecret;
+                // TODO: try to return id_token, knowing that currently using ResourceOwnerPassword flow
+                options.ResponseType = OpenIdConnectResponseType.CodeIdToken;
 
                 options.SaveTokens = true;
                 options.GetClaimsFromUserInfoEndpoint = true;
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
-                options.Scope.Add("auth");
 
                 //// TODO: not sure how to use it
+                //// https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims?view=aspnetcore-5.0
                 //// using with non standard claim, but it is not my situation (using only standard claim)
                 //// https://identityserver4.readthedocs.io/en/latest/quickstarts/2_interactive_aspnetcore.html
                 //// options.ClaimActions.MapJsonKey("website", "website");
@@ -111,30 +152,62 @@ namespace WebApplication1
                 //        return jwt;
                 //    },
                 //};
-            }).AddGoogle(googleOptions =>
-            {
-                // TODO: When using external authentication with ASP.NET Core Identity, the SignInScheme must be set to "Identity.External" instead of IdentityServerConstants.ExternalCookieAuthenticationScheme.
-                // https://identityserver4.readthedocs.io/en/aspnetcore1/quickstarts/4_external_authentication.html
-                googleOptions.SignInScheme = IdentityServerConstants.ExternalCookieAuthenticationScheme;
+            })
+            // TODO: for more info https://stackoverflow.com/questions/52765570/accessing-protected-api-on-identityserver4-with-bearer-token
+            //.AddJwtBearer(jwtOptions => 
+            //{
+            //    jwtOptions.Authority = AppSettingExtensions.Authority;
+            //    // TODO: using "options.RequireHttpsMetadata = false" for debug, 
+            //    //     : will learn to use https://github.com/aspnet/Security/blob/release/2.1/src/Microsoft.AspNetCore.Authentication.JwtBearer/JwtBearerOptions.cs#L23
+            //    jwtOptions.RequireHttpsMetadata = false;
+            //    jwtOptions.Audience = "login";
+            //})
+            ;
+            //.AddGoogle(googleOptions =>
+            //{
+            //    // TODO: When using external authentication with ASP.NET Core Identity, the SignInScheme must be set to "Identity.External" instead of IdentityServerConstants.ExternalCookieAuthenticationScheme.
+            //    // https://identityserver4.readthedocs.io/en/aspnetcore1/quickstarts/4_external_authentication.html
+            //    googleOptions.SignInScheme = IdentityServerConstants.ExternalCookieAuthenticationScheme;
 
-                googleOptions.ClientId = config.GetValue<string>(AppSettingExtensions.GoogleConfigAddress(OAuthConfig.CLIENTID));
-                googleOptions.ClientSecret = config.GetValue<string>(AppSettingExtensions.GoogleConfigAddress(OAuthConfig.CLIENTSECRET));
-            });
+            //    googleOptions.ClientId = config.GetValue<string>(AppSettingExtensions.GoogleConfigAddress(OAuthConfig.CLIENTID));
+            //    googleOptions.ClientSecret = config.GetValue<string>(AppSettingExtensions.GoogleConfigAAddress(OAuthConfig.CLIENTSECRET));
+            //});
 
             //// IDEAL: adds an authorization policy to make sure the token is for scope 'api1'
             //services.AddAuthorization(options =>
             //{
-            //    options.AddPolicy("ApiScope", policy =>
+            //    options.AddPolicy("login", policy =>
             //    {
-            //        policy.RequireAuthenticatedUser();
-            //        policy.RequireClaim("scope", "auth");
+            //        //policy.RequireAuthenticatedUser();
+            //        policy.RequireClaim("scope", "Authorizing.login");
             //    });
             //});
+            services.AddLogging(builder =>
+            {
+                var logger = new LoggerConfiguration()
+                              .MinimumLevel.Information()
+                              .WriteTo.File(path: "\\Logs", restrictedToMinimumLevel: LogEventLevel.Information, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                              fileSizeLimitBytes: 1000000, rollOnFileSizeLimit: true, retainedFileCountLimit: 365, retainedFileTimeLimit: new TimeSpan(365, 0, 0, 0))
+                              .CreateLogger();
+                builder.AddSerilog(logger);
+            })
+            //this is important
+            .AddSingleton<Serilog.ILogger>(sp =>
+            {
+                return new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .CreateLogger();
+            });
 
             // TODO: I want to know that is this???
             // TODO: will add handle exception from global service class
-            services.AddScoped<IAccountServices, AccountServices>();
-            services.AddScoped<IAuthorizationServices, AuthorizingServices>();
+            //services.AddScoped<IAccountServices, AccountServices>();
+            services.AddScoped<IAuthenticationServices, AuthenticationServices>();
+            services.AddScoped<ISigninContextServices, SigninContextServices>();
+            services.AddScoped<ITokenResponseServices, TokenResponseServices>();
+            services.AddScoped<ActionController>();
+            //// TODO: use for test
+            //services.AddScoped<IUserClaimsPrincipalFactory<Account>, ManuallyCreateClaimsPrincipal>();
             #endregion modifying
 
             services.AddControllers();
@@ -152,18 +225,41 @@ namespace WebApplication1
 
             app.UseRouting();
 
+            // WARNING: still need
+            // https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-5.0
+            // The authentication middleware that is responsible for validating the request credentials and setting the user on the request context:
+            app.UseAuthentication();
 
             // WARNING: UseIdentityServer includes a call to UseAuthentication, so itfs not necessary to have both.
             // https://identityserver4.readthedocs.io/en/latest/topics/startup.html
-            // TODO: Call UseAuthentication before any middleware that depends on users being authenticated.
+            // INFO: Call UseAuthentication before any middleware that depends on users being authenticated.
             //     : https://learn.microsoft.com/en-us/aspnet/core/security/authentication/?view=aspnetcore-7.0
             app.UseIdentityServer();
             app.UseAuthorization();
-
+            //// TODO: will check again
+            //InitializeRoles(roleManager);
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
+        }
+
+        // TODO: will check again
+        // Initialize some test roles. In the real world, these would be setup explicitly by a role manager
+        private string[] roles = new[] { "User", "Manager", "Administrator" };
+        private async System.Threading.Tasks.Task InitializeRoles(RoleManager<IdentityRole> roleManager)
+        {
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    var newRole = new IdentityRole(role);
+                    await roleManager.CreateAsync(newRole);
+                    // TODO: will check again
+                    // In the real world, there might be claims associated with roles
+                    // _roleManager.AddClaimAsync(newRole, new )
+                }
+            }
         }
     }
 }

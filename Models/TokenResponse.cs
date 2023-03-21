@@ -1,12 +1,14 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Bson.Serialization.IdGenerators;
 using System;
+using WebApplication1.Models.BaseClass;
 
 namespace WebApplication1.Models
 {
     public partial class TokenResponse: BasicModel
     {
+        [BsonElement("Date")]
+        public string Date { get; set; }
         [BsonElement("AccessToken")]
         public string AccessToken { get; set; }
         [BsonElement("ExpiresIn")]

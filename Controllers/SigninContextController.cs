@@ -3,33 +3,38 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Util.Store;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using WebApplication1.Common;
 using WebApplication1.Models;
 using WebApplication1.Services;
 
 namespace WebApplication1.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
-    [Authorize]
-    public class AuthorizingController : AbstractController<TokenResponse>
+    [Route("[Controller]")]
+    /// <summary>
+    /// TODO: will be removed, using authorizationController instead.
+    /// </summary>
+    public class SigninContextController : AbstractController<Account>
     {
         private GoogleClientSetting _googleSetting;
-        private IDataProtectionProvider _protectionProvider;
-        private readonly IWebHostEnvironment _hostingEnvironment;
+        private ISigninContextServices _signinContextServices;
+        private ActionController _actionController;
 
-        public AuthorizingController(IAuthorizationServices services, IAuthorizationThirdPartySetting authorizationSetting, IWebHostEnvironment hostingEnvironment, IDataProtectionProvider protectionProvider) : base(services)
+        public SigninContextController(IAuthorizationThirdPartySetting databaseSetting, ISigninContextServices signinContextServices, ActionController actionController)
+            : base(signinContextServices)
         {
-            _googleSetting = authorizationSetting.Google;
-            _hostingEnvironment = hostingEnvironment;
-            _protectionProvider = protectionProvider;
+            _signinContextServices = signinContextServices;
+            _googleSetting = databaseSetting.Google;
+            _actionController = actionController;
         }
 
         #region Create new account using google's email
@@ -39,8 +44,8 @@ namespace WebApplication1.Controllers
         /// , return a cookie to handle authorization from another request after login
         /// </summary>
         [HttpPost("{google}")]
-        //[Route("/google")]
-        public ActionResult GoogleLogin([FromBody]JsonElement fromGoogleObj)
+        [Route("auth/google")]
+        public ActionResult GoogleLogin([FromBody] JsonElement fromGoogleObj)
         {
             try
             {
@@ -55,13 +60,13 @@ namespace WebApplication1.Controllers
                 if (idTokenVerified != null)
                 {
                     // TODO: what to do with this token response
-                    createNewToken = (_services as IAuthorizationServices).Create(userCredential.Token); 
+                    createNewToken = (_services as ISigninContextServices).Create(userCredential.Token);
                 }
                 else
                 {
 
                 }
-                
+
                 // TODO: temporary
                 return Ok();
             }
@@ -89,7 +94,7 @@ namespace WebApplication1.Controllers
             // TODO: does not know what userId use for...
             string userId = Environment.UserName;
             //string redirectUri = "postmessage"; 
-            string redirectUri = _googleSetting.RedirectUri; 
+            string redirectUri = _googleSetting.RedirectUri;
 
             string[] scopes = new string[]
             {
@@ -134,31 +139,106 @@ namespace WebApplication1.Controllers
         /// WARNING: testing
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
-        [Route("/login-oidc")]
-        public ActionResult Login()
+        [HttpPost]
+        [Route("/login")]
+        //[Authorize(AuthenticationSchemes = "Bearer")]
+        //[Authorize]
+        public ActionResult Login([FromHeader] string userName, [FromHeader] string password)
         {
-            //var protector = _protectionProvider.CreateProtector("Oauth");
-            //var code = new Authcode();
+            //_actionController.Run((a) =>
+            //{
+            //    var user = _signinContextServices.GetByUserNameAndPassword(a.userName, a.password);
+            //    _signinContextServices.SignIn(user);
 
-            return new JsonResult(from c in User.Claims select new { c.Type, c.Value });
+            //    return true;
+            //}, (userName: userName, password, password: userName, password));
+            var user = _signinContextServices.GetByUserNameAndPassword(userName, password);
+            _signinContextServices.SignIn(user);
+
+            return Ok();
         }
+
+        // GET: AccountController
+        public ActionResult Index()
+        {
+            return null;
+        }
+
+        // GET: AccountController/Details/5
+        public ActionResult Details(int id)
+        {
+            return null;
+        }
+
+        //// GET: AccountController/Create
+        //public ActionResult Create()
+        //{
+        //    return View();
+        //}
+
+        //[HttpGet]
+        //public string Get()
+        //{
+        //    var res = _services.Get();
+        //    string jsonString = JsonSerializer.Serialize(res);
+
+        //    return jsonString;
+        //}
 
         /// <summary>
-        /// get token and return access code
+        /// POST: AccountController/Create
+        /// receive an json object
         /// </summary>
-        [HttpPost]
-        [Route("/facebook")]
-        public void FacebookLogin()
+        /// <param name="account"></param>
+        /// <returns></returns>
+        [HttpPost("{Create}")]
+        public ActionResult<Account> Create([FromBody] Account account)
         {
-
+            try
+            {
+                var newAcc = _services.Create(account);
+                //return RedirectToAction(nameof(Index));
+                return newAcc;
+            }
+            catch (Exception ex)
+            {
+                // TODO:
+                var error = ex.Message;
+                return null;
+            }
         }
 
-        [HttpPost]
-        [Route("/google-logout")]
-        public void Logout([FromBody] string accessToken)
+        // TODO:
+        // POST: AccountController/Edit/5
+        [HttpPost("{Edit}")]
+        //[ValidateAntiForgeryToken]
+        public ActionResult<Account> Edit([FromBody] Account account)
         {
+            try
+            {
+                var newAcc = _services.Update(account);
+                //return RedirectToAction(nameof(Index));
+                return newAcc;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
+        // POST: AccountController/Delete/5
+        [HttpPost("Delete")]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(int id, IFormCollection collection)
+        {
+            try
+            {
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
