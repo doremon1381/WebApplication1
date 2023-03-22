@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AspNetCore.Identity.Mongo" Version="8.3.3" />
+    <PackageReference Include="AspNetCore.Identity.MongoDbCore" Version="3.1.2" />
     <PackageReference Include="Google.Apis.Auth" Version="1.58.0" />
     <PackageReference Include="IdentityModel.AspNetCore.OAuth2Introspection" Version="6.1.0" />
     <PackageReference Include="identityserver4" Version="4.1.2" />

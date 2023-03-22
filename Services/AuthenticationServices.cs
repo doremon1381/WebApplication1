@@ -16,10 +16,10 @@ namespace WebApplication1.Services
     /// </summary>
     public class AuthenticationServices : AbstractServices<TokenResponse>, IAuthenticationServices
     {
-        private UserManager<Account> _userManager;
-        private SignInManager<Account> _signInManager;
+        private UserManager<CurrentIdentityUser> _userManager;
+        private SignInManager<CurrentIdentityUser> _signInManager;
 
-        public AuthenticationServices(UserManager<Account> userManager, SignInManager<Account> signInManager, IMongoDatabase mongoDb) : base(mongoDb)
+        public AuthenticationServices(UserManager<CurrentIdentityUser> userManager, SignInManager<CurrentIdentityUser> signInManager, IMongoDatabase mongoDb) : base(mongoDb)
         {
             _userManager = userManager;
             _signInManager = signInManager;

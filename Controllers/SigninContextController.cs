@@ -23,7 +23,7 @@ namespace WebApplication1.Controllers
     /// <summary>
     /// TODO: will be removed, using authorizationController instead.
     /// </summary>
-    public class SigninContextController : AbstractController<Account>
+    public class SigninContextController : AbstractController<CurrentIdentityUser>
     {
         private GoogleClientSetting _googleSetting;
         private ISigninContextServices _signinContextServices;
@@ -141,19 +141,20 @@ namespace WebApplication1.Controllers
         /// <returns></returns>
         [HttpPost]
         [Route("/login")]
-        //[Authorize(AuthenticationSchemes = "Bearer")]
-        //[Authorize]
-        public ActionResult Login([FromHeader] string userName, [FromHeader] string password)
+        [AllowAnonymous]
+        public ActionResult Login([FromHeader]string accessToken)
         {
+            // TODO: not done
             //_actionController.Run((a) =>
             //{
             //    var user = _signinContextServices.GetByUserNameAndPassword(a.userName, a.password);
             //    _signinContextServices.SignIn(user);
-
             //    return true;
             //}, (userName: userName, password, password: userName, password));
-            var user = _signinContextServices.GetByUserNameAndPassword(userName, password);
-            _signinContextServices.SignIn(user);
+
+            // TODO: inform IS4's sdk in appServices to deserialize accesstoken to get information
+            //var user = _signinContextServices.GetByUserNameAndPassword(userName, password);
+            //_signinContextServices.SignIn(user);
 
             return Ok();
         }
@@ -176,14 +177,16 @@ namespace WebApplication1.Controllers
         //    return View();
         //}
 
-        //[HttpGet]
-        //public string Get()
-        //{
-        //    var res = _services.Get();
-        //    string jsonString = JsonSerializer.Serialize(res);
+        [HttpGet]
+        [Authorize]
+        [Route("/login")]
+        public ActionResult Get([FromHeader] string userName, [FromHeader] string password)
+        {
+            var current = _signinContextServices.GetByUserNameAndPassword(userName, password);
+            var user = _signinContextServices.GetUser(current);
 
-        //    return jsonString;
-        //}
+            return Ok();
+        }
 
         /// <summary>
         /// POST: AccountController/Create
@@ -192,7 +195,7 @@ namespace WebApplication1.Controllers
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("{Create}")]
-        public ActionResult<Account> Create([FromBody] Account account)
+        public ActionResult<CurrentIdentityUser> Create([FromBody] CurrentIdentityUser account)
         {
             try
             {
@@ -212,7 +215,7 @@ namespace WebApplication1.Controllers
         // POST: AccountController/Edit/5
         [HttpPost("{Edit}")]
         //[ValidateAntiForgeryToken]
-        public ActionResult<Account> Edit([FromBody] Account account)
+        public ActionResult<CurrentIdentityUser> Edit([FromBody] CurrentIdentityUser account)
         {
             try
             {

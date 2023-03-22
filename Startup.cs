@@ -13,12 +13,15 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using WebApplication1.Models;
 using Microsoft.AspNetCore.Identity;
 using System;
-using AspNetCore.Identity.Mongo;
-using AspNetCore.Identity.Mongo.Model;
-using System.Security.Cryptography.X509Certificates;
 using Serilog;
 using Serilog.Events;
 using WebApplication1.Common;
+using Microsoft.AspNetCore.Http;
+using AspNetCore.Identity.MongoDbCore.Infrastructure;
+using AspNetCore.Identity.MongoDbCore.Extensions;
+using AspNetCore.Identity.MongoDbCore.Models;
+using MongoDB.Bson;
+using MongoDbGenericRepository;
 
 namespace WebApplication1
 {
@@ -53,26 +56,63 @@ namespace WebApplication1
                 sp.GetRequiredService<IOptions<OpenIDConnectionClient>>().Value);
 
             AppSettingExtensions.GetFromAppSettings(config);
-            // database
-            var mongoDb = new MongoClient(AppSettingExtensions.ConnectionString)
-                                    .GetDatabase(AppSettingExtensions.DatabaseName);
-            // TODO: will do sth
-            services.AddScoped<IMongoDatabase>(sp => mongoDb);
 
+            //// TODO: will do sth
+            ////     :https://stackoverflow.com/questions/67255591/using-asp-net-core-identity-with-mongodb
+            //services.AddIdentityMongoDbProvider<Account, MongoRole>(identity =>
+            //{
+            //    // TODO: will do sth
+            //    identity.Password.RequireUppercase = true;
+            //    identity.Password.RequireLowercase = true;
+            //    // other options
+            //},
+            //mongo =>
+            //{
+            //    mongo.ConnectionString = AppSettingExtensions.ConnectionString;
+            //})
+            //// TODO: will do sth
+            ////.AddRoleManager<MongoRole>()
+            //.AddDefaultTokenProviders()
+            //.AddClaimsPrincipalFactory<ManuallyCreateClaimsPrincipal>();
+
+            // database
+            var mongoDb = new MongoDbContext(AppSettingExtensions.ConnectionString, AppSettingExtensions.DatabaseName);
             // TODO: will do sth
-            //     :https://stackoverflow.com/questions/67255591/using-asp-net-core-identity-with-mongodb
-            services.AddIdentityMongoDbProvider<Account, MongoRole>(identity =>
+            services.AddScoped<IMongoDatabase>(sp => mongoDb.Database);
+
+            services.AddIdentity<CurrentIdentityUser, CurrentIdentityRole>()
+                .AddMongoDbStores<IMongoDbContext>(mongoDb)
+                .AddDefaultTokenProviders();
+
+            var mongoDbIdentityConfiguration = new MongoDbIdentityConfiguration
             {
-                // TODO: will do sth
-                identity.Password.RequiredLength = 8;
-                // other options
-            },
-            mongo =>
-            {
-                mongo.ConnectionString = AppSettingExtensions.ConnectionString;
-            })
-            .AddDefaultTokenProviders()
-            .AddClaimsPrincipalFactory<ManuallyCreateClaimsPrincipal>();
+                MongoDbSettings = new MongoDbSettings
+                {
+                    ConnectionString = AppSettingExtensions.ConnectionString,
+                    DatabaseName = AppSettingExtensions.DatabaseName
+                },
+                IdentityOptionsAction = options =>
+                {
+                    options.Password.RequireDigit = false;
+                    //// TODO: will do sth
+                    //options.Password.RequiredLength = 8;
+                    options.Password.RequireNonAlphanumeric = false;
+                    options.Password.RequireUppercase = false;
+                    options.Password.RequireLowercase = false;
+
+                    // Lockout settings
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
+                    //// TODO: will do sth
+                    //options.Lockout.MaxFailedAccessAttempts = 10;
+
+                    // ApplicationUser settings
+                    options.User.RequireUniqueEmail = true;
+                    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@.-_";
+                }
+            };
+            services.ConfigureMongoDbIdentity<CurrentIdentityUser, CurrentIdentityRole, ObjectId>(mongoDbIdentityConfiguration)
+                    .AddDefaultTokenProviders()
+                    .AddClaimsPrincipalFactory<ManuallyCreateClaimsPrincipal>();
             #endregion acceptable
 
             #region modifying
@@ -120,7 +160,10 @@ namespace WebApplication1
             //{
             //    cookieAuthenticationOptions.Events.OnValidatePrincipal = (cookie) => SecurityStampValidator.ValidatePrincipalAsync(cookie);
             //})
-            .AddCookie()
+            .AddCookie((options) => 
+            {
+                options.Cookie.Name = "webApplication1"; 
+            })
             .AddOpenIdConnect("oidc", options =>
             {
                 // TODO: using "options.RequireHttpsMetadata = false" for debug, 
@@ -205,7 +248,17 @@ namespace WebApplication1
             services.AddScoped<IAuthenticationServices, AuthenticationServices>();
             services.AddScoped<ISigninContextServices, SigninContextServices>();
             services.AddScoped<ITokenResponseServices, TokenResponseServices>();
+            // TODO: for more info https://stackoverflow.com/questions/60515534/asp-net-core-how-to-get-usermanager-working-in-controller
+            //services.AddScoped<UserManager<Account>>();
+            //services.AddScoped<SignInManager<Account>>();
+            services.AddScoped<HttpContextAccessor>();
             services.AddScoped<ActionController>();
+            services.AddSession((options) => 
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30);//We set Time here 
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
             //// TODO: use for test
             //services.AddScoped<IUserClaimsPrincipalFactory<Account>, ManuallyCreateClaimsPrincipal>();
             #endregion modifying
@@ -225,16 +278,19 @@ namespace WebApplication1
 
             app.UseRouting();
 
-            // WARNING: still need
-            // https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-5.0
-            // The authentication middleware that is responsible for validating the request credentials and setting the user on the request context:
-            app.UseAuthentication();
+            //TODO 
+            app.UseSession();
 
             // WARNING: UseIdentityServer includes a call to UseAuthentication, so itÅfs not necessary to have both.
             // https://identityserver4.readthedocs.io/en/latest/topics/startup.html
             // INFO: Call UseAuthentication before any middleware that depends on users being authenticated.
             //     : https://learn.microsoft.com/en-us/aspnet/core/security/authentication/?view=aspnetcore-7.0
             app.UseIdentityServer();
+
+            // WARNING: still need
+            // https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-5.0
+            // The authentication middleware that is responsible for validating the request credentials and setting the user on the request context:
+            app.UseAuthentication();
             app.UseAuthorization();
             //// TODO: will check again
             //InitializeRoles(roleManager);

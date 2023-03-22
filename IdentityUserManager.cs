@@ -1,13 +1,13 @@
-﻿using AspNetCore.Identity.Mongo.Model;
+﻿using AspNetCore.Identity.MongoDbCore.Models;
 using IdentityModel;
 using IdentityServer4;
-using IdentityServer4.Extensions;
 using IdentityServer4.Models;
 using IdentityServer4.Services;
 using IdentityServer4.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
@@ -82,19 +82,19 @@ namespace WebApplication1
     }
 
 
-    public class ManuallyCreateClaimsPrincipal : UserClaimsPrincipalFactory<Account, MongoRole>
+    public class ManuallyCreateClaimsPrincipal : UserClaimsPrincipalFactory<CurrentIdentityUser, CurrentIdentityRole>
     {
         private IMongoDatabase _dbContext;
-        private UserManager<Account> _userManager;
+        private UserManager<CurrentIdentityUser> _userManager;
 
-        public ManuallyCreateClaimsPrincipal(IMongoDatabase dbContext, UserManager<Account> userManager, RoleManager<MongoRole> roleManager, IOptions<IdentityOptions> optionsAccessor)
+        public ManuallyCreateClaimsPrincipal(IMongoDatabase dbContext, UserManager<CurrentIdentityUser> userManager, RoleManager<CurrentIdentityRole> roleManager, IOptions<IdentityOptions> optionsAccessor)
             : base(userManager, roleManager, optionsAccessor)
         {
             _dbContext = dbContext;
             _userManager = userManager;
         }
 
-        public override async Task<ClaimsPrincipal> CreateAsync(Account user)
+        public override async Task<ClaimsPrincipal> CreateAsync(CurrentIdentityUser user)
         {
             var principal = await base.CreateAsync(user);
 
@@ -115,9 +115,9 @@ namespace WebApplication1
         //repository to get user from db
         private readonly ISigninContextServices  _signinContextServices;
         //private IAuthenticationServices _authenticationServices;
-        private UserManager<Account> _userManager;
+        private UserManager<CurrentIdentityUser> _userManager;
 
-        public ResourceOwnerPasswordValidator(ISigninContextServices  accountServices, UserManager<Account> userManager)
+        public ResourceOwnerPasswordValidator(ISigninContextServices  accountServices, UserManager<CurrentIdentityUser> userManager)
         {
             _signinContextServices = accountServices; //DI
             _userManager = userManager;
@@ -129,7 +129,7 @@ namespace WebApplication1
         {
             try
             {
-                Account user = GetAccountFromDb(context);
+                CurrentIdentityUser user = GetAccountFromDb(context);
                 if (user != null)
                 {
                     // TODO:
@@ -161,7 +161,7 @@ namespace WebApplication1
         }
 
         // TODO:
-        private Account GetAccountFromDb(ResourceOwnerPasswordValidationContext context)
+        private CurrentIdentityUser GetAccountFromDb(ResourceOwnerPasswordValidationContext context)
         {
             //get your user model from db (by username - in my case its email)
             return _signinContextServices.GetByUserNameAndPassword(context.UserName, context.Password);
@@ -173,8 +173,12 @@ namespace WebApplication1
         /// </summary>
         /// <param name="user"></param>
         /// <returns></returns>
-        private List<Claim> ManuallyCreateClaimsForUserIDentity(Account user)
+        private List<Claim> ManuallyCreateClaimsForUserIDentity(CurrentIdentityUser user)
         {
+            //if (user.Roles.Count <=0)
+            //{
+            //    user.Roles.Add("admin");
+            //}
             var claims = new List<Claim>
             {
                 new Claim("user_id", user.Id.ToString() ?? ""),
@@ -185,7 +189,7 @@ namespace WebApplication1
         // TODO:
                 //new Claim(JwtClaimTypes.Issuer, user),
                 new Claim(JwtClaimTypes.Address, user.Address  ?? ""),
-                new Claim(JwtClaimTypes.Role, user.Roles[0]),
+                //new Claim(JwtClaimTypes.Role, user.Roles[0]),
                 new Claim("api", user.Apis[0]),
             };
 
@@ -204,4 +208,12 @@ namespace WebApplication1
         //    user
         //}
     }
+
+    //public class SessionManager : ISessionStore
+    //{
+    //    public ISession Create(string sessionKey, TimeSpan idleTimeout, TimeSpan ioTimeout, Func<bool> tryEstablishSession, bool isNewSessionKey)
+    //    {
+    //        throw new NotImplementedException();
+    //    }
+    //}
 }

@@ -5,7 +5,7 @@ namespace WebApplication1.Models
     /// <summary>
     /// Set value for identityUser's properies
     /// </summary>
-    public partial class Account
+    public partial class CurrentIdentityUser
     {
         public override string NormalizedUserName { get; set; } = string.Empty;
         public override string NormalizedEmail { get; set; } = string.Empty;

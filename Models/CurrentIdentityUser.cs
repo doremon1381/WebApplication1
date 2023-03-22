@@ -1,11 +1,16 @@
-﻿using AspNetCore.Identity.Mongo.Model;
+﻿using AspNetCore.Identity.MongoDbCore.Models;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 
 namespace WebApplication1.Models
 {
-    public partial class Account: MongoUser
+    /// <summary>
+    /// Is MongoUser, as IdentityUser's role of Asp.net core
+    /// </summary>
+    public partial class CurrentIdentityUser: MongoIdentityUser<ObjectId>
     {
         //[BsonId(IdGenerator = typeof(ObjectIdGenerator))]
         //[BsonRepresentation(BsonType.ObjectId)]
@@ -28,15 +33,12 @@ namespace WebApplication1.Models
         // TODO: 
         [BsonElement("apis")]
         public System.Collections.Generic.List<string> Apis { get; set; }
+        //[BsonElement("CustomClaims")]
+        //public System.Collections.Generic.List<MongoIdentityUserClaim> CustomClaims { get; set; }
         //[BsonElement("GoogleClientId")]
         //public string GoogleClientId { get; set; }
 
         [BsonIgnore]
         public bool IsLoginWithUserName { get; set; }
     }
-
-    //public class MongoRole : MongoRole
-    //{
-
-    //}
 }
