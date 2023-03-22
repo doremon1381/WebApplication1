@@ -1,6 +1,6 @@
 ﻿using WebApplication1.Models;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     public partial class TokenResponse
     {

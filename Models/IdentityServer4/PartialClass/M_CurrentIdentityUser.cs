@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     /// <summary>
     /// Set value for identityUser's properies

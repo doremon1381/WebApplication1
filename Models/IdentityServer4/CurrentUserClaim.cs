@@ -4,7 +4,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     /// <summary>
     /// using for database

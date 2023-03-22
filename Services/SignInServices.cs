@@ -1,15 +1,17 @@
 ﻿using System.Collections.Generic;
-using WebApplication1.Models.IdentityServer4;
+using WebApplication1.Models;
 
 namespace WebApplication1.Services
 {
-    public interface ITokenResponseServices: IServices<TokenResponse>
+    public interface ISignInServices: IServices<Account>
     {
+        void SignIn(Account user);
+
     }
 
-    public class TokenResponseServices : ITokenResponseServices
+    public class SignInServices : ISignInServices
     {
-        public TokenResponse Create(TokenResponse document)
+        public Account Create(Account document)
         {
             throw new System.NotImplementedException();
         }
@@ -19,17 +21,22 @@ namespace WebApplication1.Services
             throw new System.NotImplementedException();
         }
 
-        public List<TokenResponse> Get()
+        public List<Account> Get()
         {
             throw new System.NotImplementedException();
         }
 
-        public TokenResponse GetById(string id)
+        public Account GetById(string id)
         {
             throw new System.NotImplementedException();
         }
 
-        public TokenResponse Update(TokenResponse document)
+        public void SignIn(Account user)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public Account Update(Account document)
         {
             throw new System.NotImplementedException();
         }

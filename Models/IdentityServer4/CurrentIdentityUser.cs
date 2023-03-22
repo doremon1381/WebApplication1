@@ -5,7 +5,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     /// <summary>
     /// Is MongoUser, as IdentityUser's role of Asp.net core

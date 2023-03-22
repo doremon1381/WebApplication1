@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     public partial class M_CurrentIdentityRole
     {

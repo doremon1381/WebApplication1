@@ -1,5 +1,4 @@
-﻿using AspNetCore.Identity.MongoDbCore.Models;
-using IdentityModel;
+﻿using IdentityModel;
 using IdentityServer4;
 using IdentityServer4.Models;
 using IdentityServer4.Services;
@@ -7,13 +6,12 @@ using IdentityServer4.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using WebApplication1.Models;
+using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services;
 
 namespace WebApplication1
@@ -113,11 +111,11 @@ namespace WebApplication1
     public class ResourceOwnerPasswordValidator : IResourceOwnerPasswordValidator
     {
         //repository to get user from db
-        private readonly ISigninContextServices  _signinContextServices;
+        private readonly IAuthenticationServices  _signinContextServices;
         //private IAuthenticationServices _authenticationServices;
         private UserManager<CurrentIdentityUser> _userManager;
 
-        public ResourceOwnerPasswordValidator(ISigninContextServices  accountServices, UserManager<CurrentIdentityUser> userManager)
+        public ResourceOwnerPasswordValidator(IAuthenticationServices  accountServices, UserManager<CurrentIdentityUser> userManager)
         {
             _signinContextServices = accountServices; //DI
             _userManager = userManager;
@@ -164,7 +162,7 @@ namespace WebApplication1
         private CurrentIdentityUser GetAccountFromDb(ResourceOwnerPasswordValidationContext context)
         {
             //get your user model from db (by username - in my case its email)
-            return _signinContextServices.GetByUserNameAndPassword(context.UserName, context.Password);
+            return _signinContextServices.GetIdentityByNameAndPassword(context.UserName, context.Password);
         }
 
         /// <summary>

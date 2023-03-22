@@ -22,6 +22,7 @@ using AspNetCore.Identity.MongoDbCore.Extensions;
 using AspNetCore.Identity.MongoDbCore.Models;
 using MongoDB.Bson;
 using MongoDbGenericRepository;
+using WebApplication1.Models.IdentityServer4;
 
 namespace WebApplication1
 {
@@ -57,24 +58,8 @@ namespace WebApplication1
 
             AppSettingExtensions.GetFromAppSettings(config);
 
-            //// TODO: will do sth
-            ////     :https://stackoverflow.com/questions/67255591/using-asp-net-core-identity-with-mongodb
-            //services.AddIdentityMongoDbProvider<Account, MongoRole>(identity =>
-            //{
-            //    // TODO: will do sth
-            //    identity.Password.RequireUppercase = true;
-            //    identity.Password.RequireLowercase = true;
-            //    // other options
-            //},
-            //mongo =>
-            //{
-            //    mongo.ConnectionString = AppSettingExtensions.ConnectionString;
-            //})
-            //// TODO: will do sth
-            ////.AddRoleManager<MongoRole>()
-            //.AddDefaultTokenProviders()
-            //.AddClaimsPrincipalFactory<ManuallyCreateClaimsPrincipal>();
-
+            // TODO: will do sth
+            //     :https://stackoverflow.com/questions/67255591/using-asp-net-core-identity-with-mongodb
             // database
             var mongoDb = new MongoDbContext(AppSettingExtensions.ConnectionString, AppSettingExtensions.DatabaseName);
             // TODO: will do sth
@@ -139,10 +124,6 @@ namespace WebApplication1
             // authorization services
             services.AddAuthentication(options =>
             {
-                //options.DefaultAuthenticateScheme = "oidc";
-                //options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                //options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-
                 // TODO: following 
                 //// https://identityserver4.readthedocs.io/en/latest/quickstarts/2_interactive_aspnetcore.html#adding-the-ui
                 //options.DefaultChallengeScheme = "oidc";
@@ -246,11 +227,12 @@ namespace WebApplication1
             // TODO: will add handle exception from global service class
             //services.AddScoped<IAccountServices, AccountServices>();
             services.AddScoped<IAuthenticationServices, AuthenticationServices>();
-            services.AddScoped<ISigninContextServices, SigninContextServices>();
             services.AddScoped<ITokenResponseServices, TokenResponseServices>();
+            #region obsolate
             // TODO: for more info https://stackoverflow.com/questions/60515534/asp-net-core-how-to-get-usermanager-working-in-controller
             //services.AddScoped<UserManager<Account>>();
             //services.AddScoped<SignInManager<Account>>();
+            #endregion
             services.AddScoped<HttpContextAccessor>();
             services.AddScoped<ActionController>();
             services.AddSession((options) => 
@@ -259,8 +241,6 @@ namespace WebApplication1
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true;
             });
-            //// TODO: use for test
-            //services.AddScoped<IUserClaimsPrincipalFactory<Account>, ManuallyCreateClaimsPrincipal>();
             #endregion modifying
 
             services.AddControllers();
@@ -298,24 +278,6 @@ namespace WebApplication1
             {
                 endpoints.MapControllers();
             });
-        }
-
-        // TODO: will check again
-        // Initialize some test roles. In the real world, these would be setup explicitly by a role manager
-        private string[] roles = new[] { "User", "Manager", "Administrator" };
-        private async System.Threading.Tasks.Task InitializeRoles(RoleManager<IdentityRole> roleManager)
-        {
-            foreach (var role in roles)
-            {
-                if (!await roleManager.RoleExistsAsync(role))
-                {
-                    var newRole = new IdentityRole(role);
-                    await roleManager.CreateAsync(newRole);
-                    // TODO: will check again
-                    // In the real world, there might be claims associated with roles
-                    // _roleManager.AddClaimAsync(newRole, new )
-                }
-            }
         }
     }
 }

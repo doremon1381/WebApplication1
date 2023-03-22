@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using System;
 using WebApplication1.Models.BaseClass;
 
-namespace WebApplication1.Models
+namespace WebApplication1.Models.IdentityServer4
 {
     public partial class TokenResponse: BasicModel
     {
