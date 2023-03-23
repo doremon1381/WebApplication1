@@ -127,21 +127,18 @@ namespace WebApplication1
         {
             try
             {
-                CurrentIdentityUser user = GetAccountFromDb(context);
+                CurrentIdentityUser user = GetIdentityUserFromDb(context);
                 if (user != null)
                 {
-                    // TODO:
                     //check if password match - remember to hash password if stored as hash in db
                     if (user.Password == context.Password)
                     {
-                        // TODO:
-                        //_authenticationServices.SignIn(user);
-
                         //set the result
                         context.Result = new GrantValidationResult(
                             subject: user.Id.ToString(),
-                            authenticationMethod: "Resource Owner Password Flow",
-                            claims: ManuallyCreateClaimsForUserIDentity(user));
+                            authenticationMethod: "Resource Owner Password Flow");
+                            // TODO: comment for now
+                            //claims: ManuallyCreateClaimsForUserIDentity(user));
 
                         return;
                     }
@@ -159,10 +156,10 @@ namespace WebApplication1
         }
 
         // TODO:
-        private CurrentIdentityUser GetAccountFromDb(ResourceOwnerPasswordValidationContext context)
+        private CurrentIdentityUser GetIdentityUserFromDb(ResourceOwnerPasswordValidationContext context)
         {
             //get your user model from db (by username - in my case its email)
-            return _signinContextServices.GetIdentityByNameAndPassword(context.UserName, context.Password);
+            return _signinContextServices.GetIdentityUserByNameAndPassword(context.UserName, context.Password);
         }
 
         /// <summary>
@@ -173,10 +170,6 @@ namespace WebApplication1
         /// <returns></returns>
         private List<Claim> ManuallyCreateClaimsForUserIDentity(CurrentIdentityUser user)
         {
-            //if (user.Roles.Count <=0)
-            //{
-            //    user.Roles.Add("admin");
-            //}
             var claims = new List<Claim>
             {
                 new Claim("user_id", user.Id.ToString() ?? ""),
@@ -184,7 +177,6 @@ namespace WebApplication1
                 new Claim(JwtClaimTypes.Email, user.Email  ?? ""),
                 new Claim("Facebook", user.Facebook  ?? ""),
                 new Claim(JwtClaimTypes.PhoneNumber, user.PhoneNumber  ?? ""),
-        // TODO:
                 //new Claim(JwtClaimTypes.Issuer, user),
                 new Claim(JwtClaimTypes.Address, user.Address  ?? ""),
                 //new Claim(JwtClaimTypes.Role, user.Roles[0]),
@@ -198,15 +190,9 @@ namespace WebApplication1
 
             return claims;
         }
-
-        // TODO:
-        //public enum UserRoles
-        //{
-        //    admin,
-        //    user
-        //}
     }
 
+    // TODO:
     //public class SessionManager : ISessionStore
     //{
     //    public ISession Create(string sessionKey, TimeSpan idleTimeout, TimeSpan ioTimeout, Func<bool> tryEstablishSession, bool isNewSessionKey)

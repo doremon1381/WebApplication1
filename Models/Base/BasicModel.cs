@@ -2,7 +2,7 @@
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
 
-namespace WebApplication1.Models.BaseClass
+namespace WebApplication1.Models.Base
 {
     // TODO: intend to use for any other class of object as collection defined in mongodb, but not yet find a correct solution
     public class BasicModel

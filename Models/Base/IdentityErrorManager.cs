@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.Collections.Generic;
 
-namespace WebApplication1.Models.BaseClass
+namespace WebApplication1.Models.Base
 {
     public static class IdentityErrorManager
     {

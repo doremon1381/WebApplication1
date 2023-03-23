@@ -161,6 +161,9 @@ namespace WebApplication1
                 options.GetClaimsFromUserInfoEndpoint = true;
                 options.Scope.Add("openid");
                 options.Scope.Add("profile");
+                options.Scope.Add("createIdentityUser");
+                options.Scope.Add("updateIdentityUser");
+                options.Scope.Add("deleteIdentityUser");
 
                 //// TODO: not sure how to use it
                 //// https://learn.microsoft.com/en-us/aspnet/core/security/authentication/claims?view=aspnetcore-5.0

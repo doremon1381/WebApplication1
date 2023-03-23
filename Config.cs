@@ -13,7 +13,7 @@ namespace WebApplication1
         private static string reactproject1_testing_clientId = "reactproject1_testing";
 
         /// <summary>
-        /// TODO: not now
+        /// TODO: api scope for IS4 server
         /// </summary>
         public static IEnumerable<ApiScope> ApiScopes => new List<ApiScope>
             {
@@ -23,12 +23,6 @@ namespace WebApplication1
                     DisplayName = "login",
                     UserClaims = { "role", "admin", "user", "login"}
                 }
-                //new ApiScope()
-                //{
-                //    Name = "Account.create",
-                //    DisplayName = "allow create account from anonymous client",
-                //    UserClaims = {"User"}
-                //}
             };
 
         public static IEnumerable<IdentityResource> IdentityResources =>
@@ -66,20 +60,14 @@ namespace WebApplication1
                     ClientId = reactproject1_testing_clientId,                    
                     // URL of client
                     ClientUri = "http://localhost:44371", 
-                    // no interactive user, use the clientid/secret for authentication
-                    // TODO: testing for now
                     //AllowedGrantTypes = GrantTypes.CodeAndClientCredentials,
                     AllowedGrantTypes = GrantTypes.ResourceOwnerPasswordAndClientCredentials,
-                    // TODO: comment for test
-                    //AllowedGrantTypes = GrantTypes.Hybrid,
-                    // TODO: comment for test
-
                     // secret for authentication
                     ClientSecrets =
                     {
                         new Secret("511536EF-F270-4058-80CA-1C89C192F69A".Sha256())
                     },
-                    // TODO: comment for test
+                    // using this parameter, compare with authentication request from client(application) 
                     RedirectUris = { "http://localhost:44371/login" },
                     PostLogoutRedirectUris = { "http://localhost:44371/logout-callback-oidc" },
                     // scopes that client has access to
@@ -87,7 +75,9 @@ namespace WebApplication1
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
-                        "login"
+                        "createIdentityUser",
+                        "updateIdentityUser",
+                        "deleteIdentityUser"
                     },
                     // TODO: not clear how to use it
                     //AllowOfflineAccess = true,

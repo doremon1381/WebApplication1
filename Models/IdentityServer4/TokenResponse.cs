@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
-using WebApplication1.Models.BaseClass;
+using WebApplication1.Models.Base;
 
 namespace WebApplication1.Models.IdentityServer4
 {

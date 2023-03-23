@@ -20,21 +20,20 @@ namespace WebApplication1.Controllers
     /// <summary>
     /// TODO: will be removed, using authorizationController instead.
     /// </summary>
-    public class AuthenticationController : AbstractController<CurrentIdentityUser>
+    public class AuthenticationController : ControllerBase
     {
         private GoogleClientSetting _googleSetting;
         private IAuthenticationServices _signinContextServices;
         private ActionController _actionController;
 
         public AuthenticationController(IAuthorizationThirdPartySetting databaseSetting, IAuthenticationServices signinContextServices, ActionController actionController)
-            : base(signinContextServices)
         {
             _signinContextServices = signinContextServices;
             _googleSetting = databaseSetting.Google;
             _actionController = actionController;
         }
 
-        #region Create new account using google's email
+        #region Create new identityUser using google's email
         /// <summary>
         /// TODO: get requestCode from client
         /// , do st with access code and id token
@@ -57,7 +56,7 @@ namespace WebApplication1.Controllers
                 if (idTokenVerified != null)
                 {
                     // TODO: what to do with this token response
-                    createNewToken = (_services as IAuthenticationServices).Create(userCredential.Token);
+                    createNewToken = (_signinContextServices as IAuthenticationServices).Create(userCredential.Token);
                 }
                 else
                 {
@@ -132,35 +131,8 @@ namespace WebApplication1.Controllers
         }
         #endregion
 
-
-        // GET: AccountController
-        public ActionResult Index()
-        {
-            return null;
-        }
-
-        // GET: AccountController/Details/5
-        public ActionResult Details(int id)
-        {
-            return null;
-        }
-
-        //// GET: AccountController/Create
-        //public ActionResult Create()
-        //{
-        //    return View();
-        //}
-
-        [HttpGet]
-        [Authorize]
-        [Route("/login")]
-        public ActionResult Get([FromHeader] string userName, [FromHeader] string password)
-        {
-            var current = _signinContextServices.GetIdentityByNameAndPassword(userName, password);
-            var user = _signinContextServices.GetIdentityUser(current);
-
-            return Ok();
-        }
+        // TODO: need to add action
+        //     : Create new user
 
         /// <summary>
         /// POST: AccountController/Create
@@ -169,11 +141,11 @@ namespace WebApplication1.Controllers
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("{Create}")]
-        public ActionResult<CurrentIdentityUser> Create([FromBody] CurrentIdentityUser account)
+        public ActionResult<CurrentIdentityUser> CreateNewIdentityUser([FromBody]string userName, [FromBody]string password)
         {
             try
             {
-                var newAcc = _services.Create(account);
+                var newAcc = _signinContextServices.CreateNewIdentityUser(userName, password);
                 //return RedirectToAction(nameof(Index));
                 return newAcc;
             }
@@ -193,7 +165,7 @@ namespace WebApplication1.Controllers
         {
             try
             {
-                var newAcc = _services.Update(account);
+                var newAcc = _signinContextServices.Update(account);
                 //return RedirectToAction(nameof(Index));
                 return newAcc;
             }
