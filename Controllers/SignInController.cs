@@ -1,5 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System;
 using WebApplication1.Models;
 using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services;
@@ -18,16 +23,36 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet]
-        [Authorize]
         [Route("/login")]
-        public ActionResult LoginGetRequest([FromHeader]string accessToken)
+        [AllowAnonymous]
+        public ActionResult LoginGetRequest([FromHeader]string Authorization)
         {
-            //var current = _signInServices.GetIdentityByNameAndPassword(userName, password);
-            //var user = _signInServices.GetIdentityUser(current);
-            var user = _signInServices.SignIn(accessToken);
+            try
+            {
+                var accessToken = Authorization.Replace("accessToken ", "");
+                //var current = _signInServices.GetIdentityByNameAndPassword(userName, password);
+                //var user = _signInServices.GetIdentityUser(current);
+                var result = _signInServices.SignIn(accessToken);
 
-            return Ok();
+                return Ok(new { Token = result.securityToken, Message = "Success" });
+                //}
+            }
+            catch (System.Exception)
+            {
+                return BadRequest("Please pass the valid Username and Password");
+            }
+
+            //return Content(identityUser);
         }
+
+        [HttpGet]
+        [Route("/getUser")]
+        [Authorize]
+        public ActionResult GetUser()
+        {
+            return Content("OK");
+        }
+
 
         /// <summary>
         /// WARNING: testing
@@ -36,7 +61,7 @@ namespace WebApplication1.Controllers
         [HttpPost]
         [Route("/login")]
         [AllowAnonymous]
-        public ActionResult Login([FromHeader] string accessToken)
+        public ActionResult Login([FromHeader] string Authorization)
         {
             // TODO: not done
             //_actionController.Run((a) =>

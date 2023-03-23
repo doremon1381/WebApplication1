@@ -141,7 +141,7 @@ namespace WebApplication1.Controllers
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("{Create}")]
-        public ActionResult<CurrentIdentityUser> CreateNewIdentityUser([FromBody]string userName, [FromBody]string password)
+        public ActionResult<CurrentIdentityUser> CreateNewIdentityUser([FromHeader]string userName, [FromHeader]string password)
         {
             try
             {
@@ -157,11 +157,16 @@ namespace WebApplication1.Controllers
             }
         }
 
+        public IActionResult Logout()
+        {
+            return SignOut("Cookies", "oidc");
+        }
+
         // TODO:
         // POST: AccountController/Edit/5
         [HttpPost("{Edit}")]
         //[ValidateAntiForgeryToken]
-        public ActionResult<CurrentIdentityUser> Edit([FromBody] CurrentIdentityUser account)
+        public ActionResult<CurrentIdentityUser> Edit([FromBody]CurrentIdentityUser account)
         {
             try
             {

@@ -12,11 +12,14 @@ namespace WebApplication1
 
         // IDEA: for OpenIDConnection
         private static string AUTHORITY = "Authority";
+        private static string KEY = "Key";
+        private static string ISSUER = "Issuer";
         // TODO: will do sth
         //private static string RESPONSETYPE = "ResponseType";
 
         private static string AUTHORIZATION_THIRD_PARTY_SETTING = string.Format(nameof(AuthorizationThirdPartySetting));
         private static string OPENID_CONNECTION_CLIENT_SETTING = string.Format(nameof(OpenIDConnectionClient));
+        private static string JWT_RESOURCE_SERVER = string.Format("JwtResourceServer");
         private static string DATABASE_CONFIG_REGION = string.Format(nameof(FinalProjectDatabaseSetting));
         //private static string DATABASE_NAME = string.Empty;
         //private static string CONNECTION_STRING = string.Empty;
@@ -28,6 +31,10 @@ namespace WebApplication1
         internal static string Authority { get; private set; }
         internal static string ClientId { get; private set; }
         internal static string ClientSecret { get; private set; }
+
+        internal static string JwtResourceServerKey { get; private set; }
+        internal static string JwtResourceServerIssuer { get; private set; }
+        internal static string JwtResourceServerAuthority { get; private set; }
 
         /// <summary>
         /// TODO: default password
@@ -54,6 +61,10 @@ namespace WebApplication1
             Authority = config.GetValue<string>($"{OPENID_CONNECTION_CLIENT_SETTING}:{AUTHORITY}");
             ClientId = config.GetValue<string>($"{OPENID_CONNECTION_CLIENT_SETTING}:{CLIENTID}");
             ClientSecret = config.GetValue<string>($"{OPENID_CONNECTION_CLIENT_SETTING}:{CLIENTSECRET}");
+
+            JwtResourceServerKey = config.GetValue<string>($"{JWT_RESOURCE_SERVER}:{KEY}");
+            JwtResourceServerIssuer = config.GetValue<string>($"{JWT_RESOURCE_SERVER}:{ISSUER}");
+            JwtResourceServerAuthority = config.GetValue<string>($"{JWT_RESOURCE_SERVER}:{AUTHORITY}");
         }
 
     }

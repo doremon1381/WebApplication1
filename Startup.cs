@@ -23,6 +23,10 @@ using AspNetCore.Identity.MongoDbCore.Models;
 using MongoDB.Bson;
 using MongoDbGenericRepository;
 using WebApplication1.Models.IdentityServer4;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace WebApplication1
 {
@@ -130,7 +134,7 @@ namespace WebApplication1
                 //options.DefaultScheme = "Cookies";
 
                 // follow: https://stackoverflow.com/questions/59638965/how-to-add-openidconnect-via-identityserver4-to-asp-net-core-serverside-blazor-w
-                options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 // TODO: comment for now
                 //options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
@@ -179,6 +183,33 @@ namespace WebApplication1
                 //        return jwt;
                 //    },
                 //};
+            })
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, (options) => 
+            {
+                string issuer = AppSettingExtensions.Authority;
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = false,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = AppSettingExtensions.JwtResourceServerIssuer,
+                    ValidAudience = AppSettingExtensions.JwtResourceServerAuthority,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(AppSettingExtensions.JwtResourceServerKey)) //Configuration["JwtToken:SecretKey"]
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                        {
+                            context.Response.Headers.Add("Token-Expired", "true");
+                        }
+                        return System.Threading.Tasks.Task.CompletedTask;
+                    }
+                };
             })
             // TODO: for more info https://stackoverflow.com/questions/52765570/accessing-protected-api-on-identityserver4-with-bearer-token
             //.AddJwtBearer(jwtOptions => 
@@ -230,6 +261,7 @@ namespace WebApplication1
             // TODO: will add handle exception from global service class
             //services.AddScoped<IAccountServices, AccountServices>();
             services.AddScoped<IAuthenticationServices, AuthenticationServices>();
+            services.AddScoped<ISignInServices, SignInServices>();
             services.AddScoped<ITokenResponseServices, TokenResponseServices>();
             #region obsolate
             // TODO: for more info https://stackoverflow.com/questions/60515534/asp-net-core-how-to-get-usermanager-working-in-controller

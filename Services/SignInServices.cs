@@ -9,9 +9,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
-using WebApplication1.Models;
+using System.IdentityModel.Tokens.Jwt;
 using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services.Base;
+using WebApplication1.Models;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace WebApplication1.Services
 {
@@ -20,7 +25,7 @@ namespace WebApplication1.Services
         CurrentIdentityUser GetIdentityByName(string contextUsername);
         CurrentIdentityUser GetIdentityByNameAndPassword(string contextUsername, string contextPassword);
         void SignIn(CurrentIdentityUser user);
-        CurrentIdentityUser SignIn(string accessToken);
+        (string securityToken, bool isSuccess) SignIn(string accessToken);
     }
 
     /// <summary>
@@ -75,6 +80,12 @@ namespace WebApplication1.Services
             return acc;
         }
 
+        /// <summary>
+        /// Mean, create an IdentityUser, use SigninManager to excute function signin
+        ///     , add claims to use for redirect request to enpoint, ex: you send to server a request with cookie(inside cookie has identity information or sth will be used to get IdentityUser object in server)
+        ///                                                            : use to get IdentityUser in server, get claims from user and do sth before excute function inside services to resove request
+        /// </summary>
+        /// <param name="user"></param>
         public void SignIn(CurrentIdentityUser user)
         {
             try
@@ -247,9 +258,44 @@ namespace WebApplication1.Services
             return claims;
         }
 
-        public CurrentIdentityUser SignIn(string accessToken)
+        public (string securityToken, bool isSuccess) SignIn(string accessToken)
         {
-            throw new NotImplementedException();
+            JwtSecurityToken token = new JwtSecurityToken(accessToken);
+
+            Account acc = new Account();
+            acc.GetFromAccessToken(token);
+
+            //var str = token.Payload.ToString();
+            //var newstr = JsonExtensions.SerializeToJson(token.Payload);
+
+            var tk = GenerateJwtToken(acc.Subject);
+            //var newstr = token.EncodedPayload;
+            //token.Payload
+            //throw new NotImplementedException();
+            return (tk, true);
+            // TODO: return cookie to client
+        }
+
+
+        /// <summary>
+        /// Generate JWT Token after successful login.
+        /// </summary>
+        /// <param name="accountId"></param>
+        /// <returns></returns>
+        private string GenerateJwtToken(string userName)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(AppSettingExtensions.JwtResourceServerKey);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[] { new Claim("id", userName) }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = AppSettingExtensions.JwtResourceServerIssuer,
+                Audience = AppSettingExtensions.JwtResourceServerAuthority,
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
     }
 }
