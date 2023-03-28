@@ -8,6 +8,9 @@ using System;
 using WebApplication1.Models;
 using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services;
+using Serilog;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using WebApplication1.Common;
 
 namespace WebApplication1.Controllers
 {
@@ -16,33 +19,43 @@ namespace WebApplication1.Controllers
     public class SignInController : ControllerBase
     {
         private ISignInServices _signInServices;
+        private ActionWithLog<string, ActionResult> _loginGetRequestCommand;
 
-        public SignInController(ISignInServices signInServices)
+        public SignInController(ISignInServices signInServices, ILogger logger)
         {
             _signInServices = signInServices;
+
+            // TODO:
+            //_actionHandler = actionHandler;
+            _loginGetRequestCommand = new ActionWithLog<string, ActionResult>((authorization) => { return LoginGetRequest(authorization); }, "LoginGetRequest", logger);
         }
 
+        // TODO:
+        /// <summary>
+        /// TODO: parameter's name is Authorization is temporary
+        /// </summary>
+        /// <param name="Authorization"></param>
+        /// <returns></returns>
         [HttpGet]
-        [Route("/login")]
+        [Route("/api/login")]
         [AllowAnonymous]
-        public ActionResult LoginGetRequest([FromHeader]string Authorization)
+        public ActionResult LoginGetRequestCommand([FromHeader] string Authorization)
         {
-            try
-            {
-                var accessToken = Authorization.Replace("accessToken ", "");
-                //var current = _signInServices.GetIdentityByNameAndPassword(userName, password);
-                //var user = _signInServices.GetIdentityUser(current);
-                var result = _signInServices.SignIn(accessToken);
+            return _loginGetRequestCommand.Excute(Authorization);
+        }
 
-                return Ok(new { Token = result.securityToken, Message = "Success" });
-                //}
-            }
-            catch (System.Exception)
-            {
-                return BadRequest("Please pass the valid Username and Password");
-            }
+        /// <summary>
+        /// TODO: need to implement "HTTP Authentication Basic access authentication"
+        /// </summary>
+        /// <param name="accessToken"></param>
+        /// <returns></returns>
+        private ActionResult LoginGetRequest(string accessToken)
+        {
+            var at = accessToken.Replace("accessToken ", "");
 
-            //return Content(identityUser);
+            var result = _signInServices.SignIn(at);
+
+            return Ok(new { Token = result.securityToken, Message = "Success" });
         }
 
         [HttpGet]

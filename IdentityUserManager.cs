@@ -4,13 +4,16 @@ using IdentityServer4.Models;
 using IdentityServer4.Services;
 using IdentityServer4.Validation;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using WebApplication1.Common;
 using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services;
 
@@ -18,7 +21,7 @@ namespace WebApplication1
 {
     public class ManuallyCreateProfileServices : DefaultProfileService
     {
-        public ManuallyCreateProfileServices(ILogger<DefaultProfileService> logger) : base(logger)
+        public ManuallyCreateProfileServices(Microsoft.Extensions.Logging.ILogger<DefaultProfileService> logger) : base(logger)
         {
         }
 
@@ -44,7 +47,8 @@ namespace WebApplication1
         //     The context.
         public override Task GetProfileDataAsync(ProfileDataRequestContext context)
         {
-            context.LogProfileRequest(Logger);
+            // TODO:
+            //context.LogProfileRequest(Logger);
 
             // TODO: manually add claims for /connect/userinfor response
             if (context.Caller.Equals(IdentityServerConstants.ProfileDataCallers.UserInfoEndpoint))
@@ -58,7 +62,8 @@ namespace WebApplication1
                 context.IssuedClaims.AddRange(context.Subject.Claims);
             }
 
-            context.LogIssuedClaims(Logger);
+            // TODO:
+            //context.LogIssuedClaims(Logger);
             return Task.CompletedTask;
         }
 
@@ -73,12 +78,12 @@ namespace WebApplication1
         //     The context.
         public override Task IsActiveAsync(IsActiveContext context)
         {
-            Logger.LogDebug("IsActive called from: {caller}", context.Caller);
+            // TODO:
+            //Logger.LogDebug("IsActive called from: {caller}", context.Caller);
             context.IsActive = true;
             return Task.CompletedTask;
         }
     }
-
 
     public class ManuallyCreateClaimsPrincipal : UserClaimsPrincipalFactory<CurrentIdentityUser, CurrentIdentityRole>
     {
@@ -111,14 +116,11 @@ namespace WebApplication1
     public class ResourceOwnerPasswordValidator : IResourceOwnerPasswordValidator
     {
         //repository to get user from db
-        private readonly IAuthenticationServices  _signinContextServices;
-        //private IAuthenticationServices _authenticationServices;
-        private UserManager<CurrentIdentityUser> _userManager;
+        private IdentityServerUserManager _identityServerUserManager;
 
-        public ResourceOwnerPasswordValidator(IAuthenticationServices  accountServices, UserManager<CurrentIdentityUser> userManager)
+        public ResourceOwnerPasswordValidator(IdentityServerUserManager identityServerUserManager)
         {
-            _signinContextServices = accountServices; //DI
-            _userManager = userManager;
+            _identityServerUserManager = identityServerUserManager;
         }
 
         // TODO:
@@ -127,77 +129,81 @@ namespace WebApplication1
         {
             try
             {
-                CurrentIdentityUser user = GetIdentityUserFromDb(context);
+                CurrentIdentityUser user = _identityServerUserManager.GetIdentityUserCommand.Excute((userName: context.UserName, password: context.Password));
                 if (user != null)
                 {
-                    //check if password match - remember to hash password if stored as hash in db
-                    if (user.Password == context.Password)
-                    {
-                        //set the result
-                        context.Result = new GrantValidationResult(
-                            subject: user.Id.ToString(),
-                            authenticationMethod: "Resource Owner Password Flow");
-                            // TODO: comment for now
-                            //claims: ManuallyCreateClaimsForUserIDentity(user));
-
-                        return;
-                    }
-
-                    context.Result = new GrantValidationResult(TokenRequestErrors.InvalidGrant, "Incorrect password");
+                    //set the result
+                    context.Result = new GrantValidationResult(
+                        subject: user.Id.ToString(),
+                        authenticationMethod: "Resource Owner Password Flow");
+                    // TODO: comment for now
+                    //claims: ManuallyCreateClaimsForUserIDentity(user));
+                }
+                else
+                {
+                    context.Result = new GrantValidationResult(TokenRequestErrors.InvalidGrant, "User does not exist.");
                     return;
                 }
-                context.Result = new GrantValidationResult(TokenRequestErrors.InvalidGrant, "User does not exist.");
-                return;
             }
             catch (Exception)
             {
                 context.Result = new GrantValidationResult(TokenRequestErrors.InvalidGrant, "Invalid username or password");
             }
         }
-
-        // TODO:
-        private CurrentIdentityUser GetIdentityUserFromDb(ResourceOwnerPasswordValidationContext context)
-        {
-            //get your user model from db (by username - in my case its email)
-            return _signinContextServices.GetIdentityUserByNameAndPassword(context.UserName, context.Password);
-        }
-
-        /// <summary>
-        /// TODO: will check again
-        /// build claims array from user data
-        /// </summary>
-        /// <param name="user"></param>
-        /// <returns></returns>
-        private List<Claim> ManuallyCreateClaimsForUserIDentity(CurrentIdentityUser user)
-        {
-            var claims = new List<Claim>
-            {
-                new Claim("user_id", user.Id.ToString() ?? ""),
-                new Claim(JwtClaimTypes.Name, !string.IsNullOrEmpty(user.UserName) ? user.UserName : ""),
-                new Claim(JwtClaimTypes.Email, user.Email  ?? ""),
-                new Claim("Facebook", user.Facebook  ?? ""),
-                new Claim(JwtClaimTypes.PhoneNumber, user.PhoneNumber  ?? ""),
-                //new Claim(JwtClaimTypes.Issuer, user),
-                new Claim(JwtClaimTypes.Address, user.Address  ?? ""),
-                //new Claim(JwtClaimTypes.Role, user.Roles[0]),
-                new Claim("api", user.Apis[0]),
-            };
-
-            for (int i = 0; i < user.Apis.Count; i++)
-            {
-                claims.Add(new Claim("api", user.Apis[i]));
-            }
-
-            return claims;
-        }
     }
 
-    // TODO:
-    //public class SessionManager : ISessionStore
-    //{
-    //    public ISession Create(string sessionKey, TimeSpan idleTimeout, TimeSpan ioTimeout, Func<bool> tryEstablishSession, bool isNewSessionKey)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
+    public class IdentityServerUserManager
+    {
+        private IIdentityUserServices _identityUserServices;
+        private ActionWithLog<(string userName, string password), CurrentIdentityUser> _GetIdentityUser;
+        private List<CurrentIdentityUser> _users = new List<CurrentIdentityUser>();
+
+        public IdentityServerUserManager(IIdentityUserServices identityUserServices, ILogger logger)
+        {
+            _identityUserServices = identityUserServices;
+
+            _GetIdentityUser = new ActionWithLog<(string userName, string password), CurrentIdentityUser>((p) => { return GetIdentityUser(p.userName, p.password); }, "GetIdentityUser", logger);
+        }
+
+        public ActionWithLog<(string userName, string password), CurrentIdentityUser> GetIdentityUserCommand
+        {
+            get => _GetIdentityUser;
+            private set
+            {
+                _GetIdentityUser = value;
+            }
+        }
+
+        private CurrentIdentityUser GetIdentityUser(string userName, string password)
+        {
+            // if list of users in is4 already has an instance has same userName.
+            if (_users.Any(u => u.UserName.Equals(userName)))
+            {
+                // then check currently instance's password
+                using (var currentUser = _users.Find(u => u.UserName.Equals(userName) && u.Password.Equals(password)))
+                {
+                    // if already has an instance match two conditions, return this
+                    if (currentUser != null)
+                    {
+                        return currentUser;
+                    }
+                }
+            }
+            // if user with userName is not inside is4 list of users, check database
+            else
+            {
+                using (var currentUser = _identityUserServices.GetIdentityUserByName(userName))
+                {
+                    if (currentUser == null
+                        || !currentUser.Password.Equals(password))
+                        return null;
+
+                    // if user's identity information is equal with current identity model (userName and password), return this
+                    return currentUser;
+                }
+            }
+
+            return null;
+        }
+    }
 }

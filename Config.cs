@@ -42,7 +42,7 @@ namespace WebApplication1
                 // name and claims equal to the resource's name and claims. If the resource
                 // has different scopes/levels of access, the scopes property can be set to
                 // list specific scopes included in this resource, instead.
-                new ApiResource("login", "Account controller", new List<string> { "role", "admin", "user", "login"})
+                new ApiResource("login", "Account controller", new List<string> { "role", "login"})
                 {
                     Scopes =
                     {
@@ -68,7 +68,7 @@ namespace WebApplication1
                         new Secret("511536EF-F270-4058-80CA-1C89C192F69A".Sha256())
                     },
                     // using this parameter, compare with authentication request from client(application) 
-                    RedirectUris = { "http://localhost:44371/login" },
+                    RedirectUris = { "http://localhost:44371/api/login" },
                     PostLogoutRedirectUris = { "http://localhost:44371/logout-callback-oidc" },
                     // scopes that client has access to
                     AllowedScopes =
@@ -91,5 +91,9 @@ namespace WebApplication1
 
             return cl;
         }
+
+        // TODO: need to custom claims of identityuser when using in resources server
+        //     : separate identityserver with resources server mean, object of identity is different with two servers in logicaly way
+        //     : (actually, these two still inside a physicaly server)
     }
 }

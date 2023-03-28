@@ -1,22 +1,21 @@
 ﻿using IdentityModel;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Principal;
 using System.IdentityModel.Tokens.Jwt;
 using WebApplication1.Models.IdentityServer4;
 using WebApplication1.Services.Base;
 using WebApplication1.Models;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using MongoDB.Bson;
+using Microsoft.AspNetCore.Http;
+using AspNetCore.Identity.MongoDbCore.Models;
 
 namespace WebApplication1.Services
 {
@@ -24,7 +23,7 @@ namespace WebApplication1.Services
     {
         CurrentIdentityUser GetIdentityByName(string contextUsername);
         CurrentIdentityUser GetIdentityByNameAndPassword(string contextUsername, string contextPassword);
-        void SignIn(CurrentIdentityUser user);
+        //void SignIn(CurrentIdentityUser user);
         (string securityToken, bool isSuccess) SignIn(string accessToken);
     }
 
@@ -41,8 +40,8 @@ namespace WebApplication1.Services
         private RoleManager<CurrentIdentityRole> _roleManager;
         private HttpContext _httpContext;
 
-        public SignInServices(IMongoDatabase mongoDb, HttpContextAccessor httpContextAccessor, 
-            SignInManager<CurrentIdentityUser> signInManager, UserManager<CurrentIdentityUser> userManager, RoleManager<CurrentIdentityRole> roleManager) 
+        public SignInServices(IMongoDatabase mongoDb, HttpContextAccessor httpContextAccessor,
+            SignInManager<CurrentIdentityUser> signInManager, UserManager<CurrentIdentityUser> userManager, RoleManager<CurrentIdentityRole> roleManager)
             : base(mongoDb)
         {
             _currentIdentityUser = _collection;
@@ -80,53 +79,6 @@ namespace WebApplication1.Services
             return acc;
         }
 
-        /// <summary>
-        /// Mean, create an IdentityUser, use SigninManager to excute function signin
-        ///     , add claims to use for redirect request to enpoint, ex: you send to server a request with cookie(inside cookie has identity information or sth will be used to get IdentityUser object in server)
-        ///                                                            : use to get IdentityUser in server, get claims from user and do sth before excute function inside services to resove request
-        /// </summary>
-        /// <param name="user"></param>
-        public void SignIn(CurrentIdentityUser user)
-        {
-            try
-            {
-                //// signin, login, authen or anything like these
-                //var createUser = _userManager.CreateAsync(user).Result;
-
-                // TODO: not done
-                //if (_role.EstimatedDocumentCount() == 0)
-                //{
-                //    _role.InsertOne(new MongoRole("admin"));
-                //}
-                EnsureLogOut();
-                var adminrole = GetAdminRole();
-                if (user.Roles.Contains(adminrole.Id))
-                {
-                    AddAdminAccountToUserManager(user);
-                }
-                //var currentUser = _userManager.FindByNameAsync($"{user.Name}").Result;
-
-                //user.Roles.Add(admin.Id.ToString());
-                // TODO: dont use asynchonous in this programaticaly function
-                //var signinAsync = await _signInManager.SignInWithClaimsAsync(user, isPersistent: true, );
-                //var s1 = _signInManager.PasswordSignInAsync(user.UserName, user.Password, isPersistent: true, false);
-                var signin = _signInManager.SignInWithClaimsAsync(user, isPersistent: true, ManuallyCreateClaimsForUserIDentity(user, adminrole.Name));
-                var createUserClaim = _signInManager.CreateUserPrincipalAsync(user).Result;
-                bool isSignIn = _signInManager.IsSignedIn(createUserClaim);
-                if (isSignIn)
-                {
-                    var user1 = _userManager.FindByNameAsync(user.UserName).Result;
-                    var userId = user.Id;
-                }
-            }
-            catch (Exception)
-            {
-                // TODO: write code for log action later
-                //Log.Logger.BindMessageTemplate
-                throw;
-            }
-        }
-
 
         /// <summary>
         /// TODO: still need to check again
@@ -145,7 +97,8 @@ namespace WebApplication1.Services
             }
 
             _httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            _httpContext.Session.Clear();
+            //// TODO: session has user information or not?
+            //_httpContext.Session.Clear();
         }
 
 
@@ -207,27 +160,49 @@ namespace WebApplication1.Services
             }
         }
 
-        private CurrentIdentityRole GetAdminRole()
-        {
-            CurrentIdentityRole role = new CurrentIdentityRole();
-            try
-            {
-                var adminRole = _roleManager.FindByNameAsync("admin").Result;
-                if (adminRole == null)
-                {
-                    var r = _roleManager.CreateAsync(adminRole).Result;
-                    adminRole = _roleManager.FindByNameAsync("admin").Result;
-                }
+        //private CurrentIdentityRole GetAdminRole(CurrentIdentityUser u)
+        //{
+        //    CurrentIdentityRole role = new CurrentIdentityRole();
+        //    try
+        //    {
+        //        var adminRole = _roleManager.FindByNameAsync("admin").Result;
+        //        if (adminRole == null)
+        //        {
+        //            // TODO; add for now
+        //            var sr = new CurrentIdentityRole("ApplicationRole")
+        //            {
+        //                Claims = new List<MongoClaim>()
+        //                {
+        //                    new MongoClaim()
+        //                    {
+        //                        Type = JwtClaimTypes.Role,
+        //                        Value = "admin",
+        //                        Issuer = u.Id.ToString()
+        //                    }
+        //                },
+        //                NormalizedName = "ApplicationRole"
+        //            };
 
-                role = adminRole;
-                return role;
-            }
-            catch (Exception ex)
-            {
+        //            //_currentIdentityRole.InsertOne(sr);
 
-                throw;
-            }
-        }
+        //            CurrentIdentityRole ns = _currentIdentityRole.Find(r => r.Claims.Contains(sr.Claims.First())).First();
+
+        //            if (!_roleManager.RoleExistsAsync(ns.Name).Result)
+        //            {
+        //                var r = _roleManager.CreateAsync(ns).Result; 
+        //            }
+        //            adminRole = _roleManager.FindByIdAsync(ns.Id.ToString()).Result;
+        //        }
+
+        //        role = adminRole;
+        //        return role;
+        //    }
+        //    catch (Exception ex)
+        //    {
+
+        //        throw;
+        //    }
+        //}
 
         /// <summary>
         /// TODO: will check again
@@ -235,7 +210,7 @@ namespace WebApplication1.Services
         /// </summary>
         /// <param name="user"></param>
         /// <returns></returns>
-        private List<Claim> ManuallyCreateClaimsForUserIDentity(CurrentIdentityUser user, string roleNameForCurrentUser)
+        private List<Claim> ManuallyCreateClaimsForUserIDentity(CurrentIdentityUser user, string roleOfCurrentUser)
         {
             var claims = new List<Claim>
             {
@@ -246,7 +221,7 @@ namespace WebApplication1.Services
                 new Claim(JwtClaimTypes.PhoneNumber, user.PhoneNumber  ?? ""),
                 //new Claim(JwtClaimTypes.Issuer, user),
                 new Claim(JwtClaimTypes.Address, user.Address  ?? ""),
-                new Claim(JwtClaimTypes.Role, roleNameForCurrentUser),
+                new Claim(JwtClaimTypes.Role, roleOfCurrentUser),
                 new Claim("api", user.Apis[0]),
             };
 
@@ -260,13 +235,32 @@ namespace WebApplication1.Services
 
         public (string securityToken, bool isSuccess) SignIn(string accessToken)
         {
-            JwtSecurityToken token = new JwtSecurityToken(accessToken);
+            var acc = GetClientAccount(accessToken);
 
-            Account acc = new Account();
-            acc.GetFromAccessToken(token);
+            // TODO: not done
+            //if (_role.EstimatedDocumentCount() == 0)
+            //{
+            //    _role.InsertOne(new MongoRole("admin"));
+            //}
+            EnsureLogOut();
 
-            //var str = token.Payload.ToString();
-            //var newstr = JsonExtensions.SerializeToJson(token.Payload);
+            var u = _currentIdentityUser.Find(u => u.Id.Equals(ObjectId.Parse(acc.Subject))).First();
+            //var adminrole = GetAdminRole(u);
+            //if (user.Roles.Contains(adminrole.Id))
+            //{
+            //    AddAdminAccountToUserManager(user);
+            //}
+            var signin = _signInManager.SignInWithClaimsAsync(u, isPersistent: true, ManuallyCreateClaimsForUserIDentity(u, "admin"));
+            var createUserClaim = _signInManager.CreateUserPrincipalAsync(u).Result;
+
+            bool isSignIn = _signInManager.IsSignedIn(createUserClaim);
+            var userManagerCreateSucceeded = _userManager.CreateAsync(u).Result.Succeeded;
+
+            if (isSignIn && userManagerCreateSucceeded)
+            {
+                var user = _userManager.FindByNameAsync(u.UserName).Result;
+                var userId = user.Id;
+            }
 
             var tk = GenerateJwtToken(acc.Subject);
             //var newstr = token.EncodedPayload;
@@ -276,6 +270,16 @@ namespace WebApplication1.Services
             // TODO: return cookie to client
         }
 
+        private Account GetClientAccount(string accessToken) 
+        {
+            // serialize acceestoken to get information
+            JwtSecurityToken token = new JwtSecurityToken(accessToken);
+
+            Account acc = new Account();
+            acc.GetFromAccessToken(token);
+
+            return acc;
+        }
 
         /// <summary>
         /// Generate JWT Token after successful login.

@@ -5,6 +5,8 @@ using Google.Apis.Util.Store;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Serilog;
 using System;
 using System.Text.Json;
 using System.Threading;
@@ -23,14 +25,20 @@ namespace WebApplication1.Controllers
     public class AuthenticationController : ControllerBase
     {
         private GoogleClientSetting _googleSetting;
-        private IAuthenticationServices _signinContextServices;
-        private ActionController _actionController;
+        private IIdentityUserServices _identityUserServices;
+        //private ActionHandler _actionController;
+        private ActionWithLog<(string userName, string password), ActionResult<CurrentIdentityUser>> _CreateNewIdentityUserCommand;
+        private ActionHandler<object, ActionResult> _actionHandler = new ActionHandler<object, ActionResult>();
 
-        public AuthenticationController(IAuthorizationThirdPartySetting databaseSetting, IAuthenticationServices signinContextServices, ActionController actionController)
+        public AuthenticationController(IAuthorizationThirdPartySetting databaseSetting, IIdentityUserServices identityUserServices, ILogger logger)
         {
-            _signinContextServices = signinContextServices;
+            _identityUserServices = identityUserServices;
             _googleSetting = databaseSetting.Google;
-            _actionController = actionController;
+            //_actionController = actionController;
+
+            _CreateNewIdentityUserCommand = new ActionWithLog<(string userName, string password), ActionResult<CurrentIdentityUser>>((p) => { return CreateNewIdentityUser(p.userName, p.password); }, "CreateNewIdentityUser", logger);
+
+            //_actionHandler.AddAction(_CreateNewIdentityUserCommand);
         }
 
         #region Create new identityUser using google's email
@@ -56,7 +64,7 @@ namespace WebApplication1.Controllers
                 if (idTokenVerified != null)
                 {
                     // TODO: what to do with this token response
-                    createNewToken = (_signinContextServices as IAuthenticationServices).Create(userCredential.Token);
+                    createNewToken = (_identityUserServices as IGoogleServices).Create(userCredential.Token);
                 }
                 else
                 {
@@ -133,28 +141,26 @@ namespace WebApplication1.Controllers
 
         // TODO: need to add action
         //     : Create new user
+        #region ActionWithLog
+        [HttpPost("{Create}")]
+        public ActionResult<CurrentIdentityUser> CreateNewIdentityUserCommand(string userName, string password)
+        {
+            return _CreateNewIdentityUserCommand.Excute((userName, password));
+        }
+        #endregion ActionWithLog
 
+        #region API Methods
         /// <summary>
         /// POST: AccountController/Create
         /// receive an json object
         /// </summary>
         /// <param name="account"></param>
         /// <returns></returns>
-        [HttpPost("{Create}")]
-        public ActionResult<CurrentIdentityUser> CreateNewIdentityUser([FromHeader]string userName, [FromHeader]string password)
+        private ActionResult<CurrentIdentityUser> CreateNewIdentityUser([FromHeader] string userName, [FromHeader] string password)
         {
-            try
-            {
-                var newAcc = _signinContextServices.CreateNewIdentityUser(userName, password);
-                //return RedirectToAction(nameof(Index));
-                return newAcc;
-            }
-            catch (Exception ex)
-            {
-                // TODO:
-                var error = ex.Message;
-                return null;
-            }
+            var newAcc = _identityUserServices.CreateNewIdentityUser(userName, password);
+            //return RedirectToAction(nameof(Index));
+            return newAcc;
         }
 
         public IActionResult Logout()
@@ -166,11 +172,11 @@ namespace WebApplication1.Controllers
         // POST: AccountController/Edit/5
         [HttpPost("{Edit}")]
         //[ValidateAntiForgeryToken]
-        public ActionResult<CurrentIdentityUser> Edit([FromBody]CurrentIdentityUser account)
+        public ActionResult<CurrentIdentityUser> Edit([FromBody] CurrentIdentityUser account)
         {
             try
             {
-                var newAcc = _signinContextServices.Update(account);
+                var newAcc = _identityUserServices.Update(account);
                 //return RedirectToAction(nameof(Index));
                 return newAcc;
             }
@@ -194,5 +200,6 @@ namespace WebApplication1.Controllers
                 return null;
             }
         }
+        #endregion API Methods
     }
 }

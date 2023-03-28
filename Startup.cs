@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace WebApplication1
 {
@@ -80,10 +81,10 @@ namespace WebApplication1
                     ConnectionString = AppSettingExtensions.ConnectionString,
                     DatabaseName = AppSettingExtensions.DatabaseName
                 },
+                // TODO: will modify
                 IdentityOptionsAction = options =>
                 {
                     options.Password.RequireDigit = false;
-                    //// TODO: will do sth
                     //options.Password.RequiredLength = 8;
                     options.Password.RequireNonAlphanumeric = false;
                     options.Password.RequireUppercase = false;
@@ -91,7 +92,6 @@ namespace WebApplication1
 
                     // Lockout settings
                     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
-                    //// TODO: will do sth
                     //options.Lockout.MaxFailedAccessAttempts = 10;
 
                     // ApplicationUser settings
@@ -145,9 +145,9 @@ namespace WebApplication1
             //{
             //    cookieAuthenticationOptions.Events.OnValidatePrincipal = (cookie) => SecurityStampValidator.ValidatePrincipalAsync(cookie);
             //})
-            .AddCookie((options) => 
+            .AddCookie((options) =>
             {
-                options.Cookie.Name = "webApplication1"; 
+                options.Cookie.Name = "webApplication1";
             })
             .AddOpenIdConnect("oidc", options =>
             {
@@ -184,7 +184,7 @@ namespace WebApplication1
                 //    },
                 //};
             })
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, (options) => 
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, (options) =>
             {
                 string issuer = AppSettingExtensions.Authority;
 
@@ -254,13 +254,28 @@ namespace WebApplication1
             {
                 return new LoggerConfiguration()
                     .MinimumLevel.Debug()
-                    .CreateLogger();
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+                .MinimumLevel.Override("System", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.AspNetCore.Authentication", LogEventLevel.Information)
+                .Enrich.FromLogContext()
+                // uncomment to write to Azure diagnostics stream
+                .WriteTo.File(
+                    @"G:\LogFiles\webApplication1\test.txt",
+                    fileSizeLimitBytes: 1_000_000,
+                    rollOnFileSizeLimit: true,
+                    shared: true,
+                    flushToDiskInterval: TimeSpan.FromSeconds(1))
+                // TODO: comment for now
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level}] {SourceContext}{NewLine}{Message:lj}{NewLine}{Exception}{NewLine}", theme: AnsiConsoleTheme.Code)
+                .CreateLogger();
             });
 
             // TODO: I want to know that is this???
             // TODO: will add handle exception from global service class
             //services.AddScoped<IAccountServices, AccountServices>();
-            services.AddScoped<IAuthenticationServices, AuthenticationServices>();
+            services.AddScoped<IGoogleServices, GoogleServices>();
+            services.AddScoped<IIdentityUserServices, IdentityUserServices>();
             services.AddScoped<ISignInServices, SignInServices>();
             services.AddScoped<ITokenResponseServices, TokenResponseServices>();
             #region obsolate
@@ -269,8 +284,8 @@ namespace WebApplication1
             //services.AddScoped<SignInManager<Account>>();
             #endregion
             services.AddScoped<HttpContextAccessor>();
-            services.AddScoped<ActionController>();
-            services.AddSession((options) => 
+            services.AddScoped<IdentityServerUserManager>();
+            services.AddSession((options) =>
             {
                 options.IdleTimeout = TimeSpan.FromMinutes(30);//We set Time here 
                 options.Cookie.HttpOnly = true;
