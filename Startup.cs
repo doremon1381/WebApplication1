@@ -28,6 +28,9 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog.Sinks.SystemConsole.Themes;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using WebApplication1.Services.Middleware;
+using System.Net.Http;
 
 namespace WebApplication1
 {
@@ -299,6 +302,7 @@ namespace WebApplication1
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            #region Configure the HTTP request pipeline.
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -306,9 +310,7 @@ namespace WebApplication1
 
             app.UseHttpsRedirection();
 
-            app.UseRouting();
-
-            //TODO 
+            //TODO : will check again
             app.UseSession();
 
             // WARNING: UseIdentityServer includes a call to UseAuthentication, so itÅfs not necessary to have both.
@@ -321,13 +323,20 @@ namespace WebApplication1
             // https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-api-authorization?view=aspnetcore-5.0
             // The authentication middleware that is responsible for validating the request credentials and setting the user on the request context:
             app.UseAuthentication();
+            // TODO: dont know how to use middleware Message.
+            //     : update 4/4/2023: still dont know how it work
+            app.UseMiddleware<MessageHandler>();
+            app.UseRouting();
+
             app.UseAuthorization();
+
             //// TODO: will check again
             //InitializeRoles(roleManager);
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
+            #endregion
         }
     }
 }

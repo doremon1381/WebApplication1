@@ -16,6 +16,7 @@ using System.Text;
 using MongoDB.Bson;
 using Microsoft.AspNetCore.Http;
 using AspNetCore.Identity.MongoDbCore.Models;
+using System.Threading;
 
 namespace WebApplication1.Services
 {
@@ -254,12 +255,16 @@ namespace WebApplication1.Services
             var createUserClaim = _signInManager.CreateUserPrincipalAsync(u).Result;
 
             bool isSignIn = _signInManager.IsSignedIn(createUserClaim);
-            var userManagerCreateSucceeded = _userManager.CreateAsync(u).Result.Succeeded;
+            //var userManagerCreateSucceeded = _userManager.CreateAsync(u).Result.Succeeded;
 
-            if (isSignIn && userManagerCreateSucceeded)
+            if (isSignIn)
             {
                 var user = _userManager.FindByNameAsync(u.UserName).Result;
                 var userId = user.Id;
+
+                // TODO: what is different between two things
+                Thread.CurrentPrincipal = createUserClaim;
+                _httpContext.User = createUserClaim;
             }
 
             var tk = GenerateJwtToken(acc.Subject);

@@ -51,9 +51,9 @@ namespace WebApplication1.Controllers
         /// <returns></returns>
         private ActionResult LoginGetRequest(string accessToken)
         {
-            var at = accessToken.Replace("accessToken ", "");
+            //var at = accessToken.Replace("accessToken ", "");
 
-            var result = _signInServices.SignIn(at);
+            var result = _signInServices.SignIn(accessToken);
 
             return Ok(new { Token = result.securityToken, Message = "Success" });
         }

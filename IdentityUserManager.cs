@@ -168,10 +168,6 @@ namespace WebApplication1
         public ActionWithLog<(string userName, string password), CurrentIdentityUser> GetIdentityUserCommand
         {
             get => _GetIdentityUser;
-            private set
-            {
-                _GetIdentityUser = value;
-            }
         }
 
         private CurrentIdentityUser GetIdentityUser(string userName, string password)
